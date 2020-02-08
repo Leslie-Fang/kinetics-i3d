@@ -123,7 +123,8 @@ def main(unused_argv):
       else:
         rgb_saver.restore(sess, _CHECKPOINT_PATHS[eval_type])
       tf.logging.info('RGB checkpoint restored')
-      rgb_sample = np.load(_SAMPLE_PATHS['rgb'])
+      #rgb_sample = np.load(_SAMPLE_PATHS['rgb'])[:, 0:64, :,:,:] #shape (1, 64, 224, 224, 3)
+      rgb_sample = np.load(_SAMPLE_PATHS['rgb']) #shape (1, 79, 224, 224, 3)
       tf.logging.info('RGB data loaded, shape=%s', str(rgb_sample.shape))
       feed_dict[rgb_input] = rgb_sample
 

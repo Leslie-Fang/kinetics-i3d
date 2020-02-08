@@ -1,3 +1,7 @@
+# I3D models trained on UCF101
+Fork from: https://github.com/deepmind/kinetics-i3d
+Train and Inference code are all in the main.py file
+
 # I3D models trained on Kinetics
 
 ## Overview
