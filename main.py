@@ -7,6 +7,7 @@ import tensorflow as tf
 import sonnet as snt
 import i3d
 import random
+from random import shuffle
 import os
 from multiprocessing import Pool
 import time
@@ -190,12 +191,14 @@ def train():
     model_predictions = tf.nn.softmax(model_logits, name="Ys")
 
     #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=transpose_logits2, labels=Y_))
-    loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=transpose_logits2, labels=Y_))
+    loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=transpose_logits2, labels=Y_), name = "loss")
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=3).minimize(loss)
 
     # loss2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=model_predictions, labels=Y_2))
-    loss2 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=model_predictions, labels=Y_2))
+    loss2 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=model_predictions, labels=Y_2), name = "loss2")
     optimizer2 = tf.train.GradientDescentOptimizer(learning_rate=3).minimize(loss2)
+
+    #optimizer3 = optimizer = tf.train.MomentumOptimizer(learning_rate=3, momentum=0.9).minimize(loss)
 
     with tf.Session() as sess:
         # Init the new add layer's parameteters
@@ -208,25 +211,33 @@ def train():
         batchsize = 32
         steps = int(len(global_train_dataset)/batchsize)
 
+        #  Used to save the changed model
+        only_generate_ckpt_for_tf2 = True
+        if only_generate_ckpt_for_tf2:
+            epoch_num = 1
+            steps = 1
+
         for epoch in range(epoch_num):
+            shuffle(global_train_dataset)  # shuffle the dataset
             for step in range(steps):
                 feed_dict = {}
                 feed_dict[rgb_input], feed_dict[Y_], iterator = get_one_batch_data_multiprocess_v2("training", iterator, batchsize)
                 feed_dict[Y_2] = feed_dict[Y_][:, :, 0]  # All labels have the same value in depth direction
 
                 # optimizer, training 5 epoch, lr=3, inference accuracy 3386/3776=0.896
-                # optimizer2, training 5 epoch, lr=3, inference accuracy
+                # optimizer2, training 5 epoch, lr=3, inference accuracy not convergent
                 if step % 5 == 0:
-                    step_loss, _ = sess.run([loss2, optimizer2], feed_dict=feed_dict)
+                    step_loss, _ = sess.run([loss, optimizer], feed_dict=feed_dict)
                     print("step:{}, loss:{}".format(step, step_loss))
                 else:
-                    sess.run(optimizer2, feed_dict=feed_dict)
+                    sess.run(optimizer, feed_dict=feed_dict)
 
         if os.path.isdir("./fine_tune_model") is False:
             os.makedirs("./fine_tune_model")
             os.makedirs("./fine_tune_model/pb")
+        #saver = tf.train.Saver({'loss': loss, 'loss2': loss2, 'optimizer':optimizer, 'optimizer2':optimizer2})
         saver = tf.train.Saver()
-        saver.save(sess, "./fine_tune_model/model")
+        saver.save(sess, "./fine_tune_model/model.ckpt")
 
         constant_graph = graph_util.convert_variables_to_constants(sess, sess.graph_def, ['Ys'])
         with tf.gfile.FastGFile("./fine_tune_model/pb/model.pb", mode='wb') as f:

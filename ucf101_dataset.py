@@ -1,7 +1,4 @@
 import numpy as np
-import tensorflow as tf
-
-import i3d
 import cv2
 import os
 import json
